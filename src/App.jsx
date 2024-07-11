@@ -3,9 +3,10 @@ import './App.css';
 import Papa from 'papaparse'; // This library helps in parsing CSV files
 
 function App() {
-  const [count, setCount] = useState(0);
   const [csvFile, setCsvFile] = useState(null);
   const [csvArray, setCsvArray] = useState([]);
+  const [orders, setOrders] = useState({});
+  const [totals, setTotals] = useState({});
 
   // Function to handle file input change
   const handleFileChange = (e) => {
@@ -18,45 +19,78 @@ function App() {
       Papa.parse(csvFile, {
         complete: function(results) {
           setCsvArray(results.data);
+          const initialOrders = {};
+          results.data.forEach(item => {
+            if (item && item[Object.keys(item)[0]]) {
+              initialOrders[item[Object.keys(item)[0]]] = 0; // Initialize each item's order count to 0
+            }
+          });
+          setOrders(initialOrders);
         },
         header: true,
       });
     }
   }, [csvFile]);
 
+  // Handle changes to the order inputs
+  const handleOrderChange = (itemName, value) => {
+    setOrders(prevOrders => ({
+      ...prevOrders,
+      [itemName]: Number(value)
+    }));
+  };
+
+  // Submit orders and calculate totals
+  const handleSubmitOrders = () => {
+    const newTotals = {};
+    csvArray.forEach(row => {
+      const itemName = row[Object.keys(row)[0]]; // Get the item name (assumed to be in the first column)
+      if (itemName && orders[itemName]) {
+        Object.keys(row).forEach((ingredient, index) => {
+          if (index > 0) { // Skip the first column since it's the item name
+            const quantity = parseInt(row[ingredient], 10) || 0;
+            if (quantity > 0) {
+              newTotals[ingredient] = (newTotals[ingredient] || 0) + (quantity * orders[itemName]);
+            }
+          }
+        });
+      }
+    });
+    setTotals(newTotals);
+  };
+
   return (
     <>
       <div>
         <h1>Butter and Seashell Admin Hub</h1>
+        <h2>Upload your box sheet</h2>
+        <input type="file" accept=".csv" onChange={handleFileChange} />
+        <button onClick={handleSubmitOrders}>Submit Orders</button>
       </div>
-      <div>
-        <input
-          type="file"
-          accept=".csv"
-          onChange={handleFileChange}
-        />
-      </div>
-      {csvArray.length > 0 && (
+      {Object.keys(orders).length > 0 && (
         <div>
-          <h2>CSV Data:</h2>
-          <table>
-            <thead>
-              <tr>
-                {Object.keys(csvArray[0]).map((header, index) => (
-                  <th key={index}>{header}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {csvArray.map((row, index) => (
-                <tr key={index}>
-                  {Object.values(row).map((val, idx) => (
-                    <td key={idx}>{val}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <h2>Orders:</h2>
+          <ul>
+            {Object.keys(orders).map((item, index) => (
+              <li key={index}>
+                {item}: <input
+                  type="number"
+                  value={orders[item]}
+                  onChange={(e) => handleOrderChange(item, e.target.value)}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {Object.keys(totals).length > 0 && (
+        <div>
+          <h2>Total Batches Needed:</h2>
+          <ul>
+            {Object.keys(totals).map((ingredient, index) => (
+              <li key={index}>{ingredient}: {Math.ceil(totals[ingredient]/12)+ "(" + totals[ingredient] + ")"}</li>
+            ))}
+          </ul>
         </div>
       )}
     </>
