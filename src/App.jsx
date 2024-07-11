@@ -88,7 +88,7 @@ function App() {
           <h2>Total Batches Needed:</h2>
           <ul>
             {Object.keys(totals).map((ingredient, index) => (
-              <li key={index}>{ingredient}: {Math.ceil(totals[ingredient]/12)+ "(" + totals[ingredient] + ")"}</li>
+              <li key={index}>{ingredient}: {Math.ceil(totals[ingredient]/12)+ " (" + totals[ingredient] + ")"}</li>
             ))}
           </ul>
         </div>
