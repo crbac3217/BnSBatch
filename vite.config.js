@@ -5,4 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/BnSBatch/',
+  build: {
+    outDir: 'build',  // Make sure this is correctly set
+  },
 })
