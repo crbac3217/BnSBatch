@@ -65,7 +65,6 @@ function App() {
         <h1>Butter and Seashell Admin Hub</h1>
         <h2>Upload your box sheet</h2>
         <input type="file" accept=".csv" onChange={handleFileChange} />
-        <button onClick={handleSubmitOrders}>Submit Orders</button>
       </div>
       {Object.keys(orders).length > 0 && (
         <div>
@@ -81,6 +80,7 @@ function App() {
               </li>
             ))}
           </ul>
+          <button onClick={handleSubmitOrders}>Submit Orders</button>
         </div>
       )}
       {Object.keys(totals).length > 0 && (
