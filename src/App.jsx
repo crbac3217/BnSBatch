@@ -62,7 +62,7 @@ function App() {
   return (
     <>
       <div>
-        <h1>Butter and Seashell Admin Hub</h1>
+        <h1>Butter and Seashell Batch Calculator</h1>
         <h2>Upload your box sheet</h2>
         <input type="file" accept=".csv" onChange={handleFileChange} />
       </div>
