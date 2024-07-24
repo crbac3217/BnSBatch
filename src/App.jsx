@@ -1,53 +1,64 @@
 import { useState, useEffect } from 'react';
 import './App.css';
-import Papa from 'papaparse'; // This library helps in parsing CSV files
+import Papa from 'papaparse';
+import { db } from './firebase-config';
+import { collection, addDoc, getDocs, deleteDoc, doc } from "firebase/firestore";
 
 function App() {
-  const [csvFile, setCsvFile] = useState(null);
   const [csvArray, setCsvArray] = useState([]);
   const [orders, setOrders] = useState({});
   const [totals, setTotals] = useState({});
 
-  // Function to handle file input change
-  const handleFileChange = (e) => {
-    setCsvFile(e.target.files[0]);
-  };
-
-  // Function to parse CSV file
+  // Fetch CSV data from Firestore on component mount
   useEffect(() => {
-    if (csvFile) {
-      Papa.parse(csvFile, {
-        complete: function(results) {
-          setCsvArray(results.data);
-          const initialOrders = {};
-          results.data.forEach(item => {
-            if (item && item[Object.keys(item)[0]]) {
-              initialOrders[item[Object.keys(item)[0]]] = 0; // Initialize each item's order count to 0
-            }
-          });
-          setOrders(initialOrders);
-        },
-        header: true,
-      });
-    }
-  }, [csvFile]);
+    const fetchData = async () => {
+      const querySnapshot = await getDocs(collection(db, "csvData"));
+      if (!querySnapshot.empty) {
+        const data = querySnapshot.docs[0].data().content; // Assuming we always use the first document
+        setCsvArray(data);
+        initializeOrders(data);
+      }
+    };
 
-  // Handle changes to the order inputs
-  const handleOrderChange = (itemName, value) => {
-    setOrders(prevOrders => ({
-      ...prevOrders,
-      [itemName]: Number(value)
-    }));
+    fetchData();
+  }, []);
+
+  // Initialize orders from fetched or uploaded CSV data
+  const initializeOrders = (data) => {
+    const initialOrders = {};
+    data.forEach(item => {
+      if (item && item[Object.keys(item)[0]]) {
+        initialOrders[item[Object.keys(item)[0]]] = 0; // Initialize each item's order count to 0
+      }
+    });
+    setOrders(initialOrders);
   };
 
-  // Submit orders and calculate totals
+  // Handle CSV file input changes
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    Papa.parse(file, {
+      complete: async function(results) {
+        setCsvArray(results.data);
+        initializeOrders(results.data);
+        // Overwrite data in Firestore
+        await addDoc(collection(db, "csvData"), {
+          content: results.data,
+          createdAt: new Date()
+        });
+      },
+      header: true
+    });
+  };
+
+  // Calculate and set totals based on orders
   const handleSubmitOrders = () => {
     const newTotals = {};
     csvArray.forEach(row => {
-      const itemName = row[Object.keys(row)[0]]; // Get the item name (assumed to be in the first column)
+      const itemName = row[Object.keys(row)[0]];
       if (itemName && orders[itemName]) {
         Object.keys(row).forEach((ingredient, index) => {
-          if (index > 0) { // Skip the first column since it's the item name
+          if (index > 0) {
             const quantity = parseInt(row[ingredient], 10) || 0;
             if (quantity > 0) {
               newTotals[ingredient] = (newTotals[ingredient] || 0) + (quantity * orders[itemName]);
@@ -75,7 +86,7 @@ function App() {
                 {item}: <input
                   type="number"
                   value={orders[item]}
-                  onChange={(e) => handleOrderChange(item, e.target.value)}
+                  onChange={(e) => (e) => handleOrderChange(item, e.target.value)}
                 />
               </li>
             ))}
@@ -88,7 +99,7 @@ function App() {
           <h2>Total Batches Needed:</h2>
           <ul>
             {Object.keys(totals).map((ingredient, index) => (
-              <li key={index}>{ingredient}: {Math.ceil(totals[ingredient]/12)+ " (" + totals[ingredient] + ")"}</li>
+              <li key={index}>{ingredient}: {Math.ceil(totals[ingredient]/12) + " (" + totals[ingredient] + ")"}</li>
             ))}
           </ul>
         </div>
